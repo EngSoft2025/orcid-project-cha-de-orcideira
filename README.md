@@ -1,63 +1,61 @@
-# Trabalho ORCID
+# Chá de Orcideira
 
-Documentação para a realização do Trabalho da Disciplina SCC0130 - Engenharia de Software, ministrada pelo Prof. Dr. Seiji Isotani.
+## Equipe
 
-## 1. Requisitos Básicos
+- **Rodrigo Rodrigues de Castro** – 13695362  
+- **Marcus Vinicius da Silva** – 13833150  
+- **Breno Gonçalves Rodrigues** – 11734142  
+- **Oliver Kenzo Kobayashi** – 13676930  
+- **Henrique de Oliveira Araujo** – 13863950
 
-### 1.1. Grupos
+## Descrição do Projeto
 
-O trabalho deverá ser feito em grupos de até 5 alunos. Os alunos de um mesmo grupo devem ser, preferencialmente, da mesma turma (horário).
+**Chá de Orcideira** é um sistema web voltado tanto para pesquisadores quanto para o público geral, com foco em acompanhamento acadêmico e divulgação científica. O projeto oferece:
 
-### 1.2. Entrega
+- **Para usuários cadastrados (pesquisadores e afins):**
+  - Área pessoal com estatísticas de produção acadêmica, como:
+    - Artigos publicados por ano;
+    - Citações recebidas;
+    - Indicadores de impacto.
+  - Recomendações de *Hot Papers* (artigos em alta na área de interesse).
+  - Sugestões de periódicos adequados para submissão de trabalhos.
+  - Notificações automáticas quando os trabalhos forem citados.
+  
+  O cadastro e login são realizados via **ORCID**, garantindo autenticidade e segurança.
 
-A data de entrega final é dia DD/MM.
+- **Para o público geral:**
+  - Ferramenta de busca para obter informações sobre pesquisadores e áreas de estudo;
+  - Acesso a dados como artigos relevantes, pesquisadores em destaque e periódicos influentes.
 
-### 1.3. Plágio
+A plataforma realiza integrações automáticas com serviços como **Scopus** para garantir dados atualizados e confiáveis. Todo o sistema é desenvolvido com foco em uma interface intuitiva, responsiva e segura.
 
-O uso de IA (ex: Chat GPT) para produção de código é incentivada, mas plágio não será tolerado.
+## Requisitos Técnicos
 
-## 2. Requisitos Técnicos
+- **Frontend:**
+  - React.js (ou Vue.js) + TypeScript para criação de interfaces dinâmicas e responsivas.
 
-### 2.1. Contextualização
+- **Backend:**
+  - Node.js para implementação da lógica de negócios e desenvolvimento de APIs.
 
-O [ORCID](https://orcid.org) (Open Researcher and Contributor ID) é um identificador digital único para pesquisadores e autores acadêmicos. Ele foi criado como um projeto open source, com o objetivo de resolver o problema de ambiguidade nos nomes dos autores em publicações científicas, garantindo que cada pesquisador tenha um ID exclusivo, independente de variações no nome, afiliações institucionais ou mudanças de carreira.
+- **Banco de Dados:**
+  - PostgreSQL (banco relacional) para armazenamento de dados estruturados.
 
-### 2.2. Motivação
+- **Autenticação:**
+  - OAuth 2.0 via ORCID para autenticação e validação de identidade.
 
-Embora o seja ORCID essencial para pesquisadores e acadêmicos, sua a interface e a usabilidade poderiam ser muito melhores. Além disso, é possível criar uma vasta gama de produtos e soluções em cima dele, tendo em vista que a [documentação](https://github.com/ORCID/ORCID-Source) da sua API é muito bem estruturada. Veja [como usar a API](/API.md).
+- **Integrações:**
+  - API do **Scopus**: coleta de estatísticas sobre artigos e citações.
+  - API do **ORCID**: autenticação e sincronização de dados do usuário.
 
-### 2.3. Objetivos
+## Controle de Versionamento
 
-**Entrevistar 3 professores** para coletar e documentar requisitos e necessidades para o desenvolvimento de um produto que melhore a visualização, interação ou gestão dos dados fornecidos via API pública do ORCID; seguindo os padrões, os métodos, e as documentações discutidas na disciplina. 
+O versionamento do projeto seguirá o modelo **Git Flow**, com as seguintes práticas:
 
-**Idealizar e desenvolver o produto**, que pode ser uma aplicação Web, Mobile, Desktop, etc.
-
-### 2.4 Sugestões
-
-Seguem algumas sugestões de possíveis melhorias:
-
-- Visualizar estatísticas das publicações.
-- Gerenciar publicações de forma mais visual e interativa.
-- Analisar rede acadêmica de colaborações.
-- Alertas e notificações (ex: citação de artigos, publicações).
-
-## 3. Avaliação
-
-A nota de avaliação do trabalho será dada por:
-
-1. Documentação do Projeto (4):
-    - Plano do projeto. (0,5)
-    - Documento de requisitos e entrevistas. (2)
-    - Modelagem do software. (0,5)
-    - Casos de uso. (0,5)
-    - Casos de teste. (0,5)
-
-2. Desenvolvimento (3):
-    - Seguir metodologia escolhida. (2)
-    - Organização das tarefas. (1)
-
-3. Produto (3):
-    - Atendimento às funcionalidades e requisitos. (1)
-    - Organização e documentação do código no GitHub. (0,5)
-    - Usabilidade e manutenabilidade. (0,5)
-    - Apresentação do produto. (1)
+- Uso das branches:
+  - `main` (produção)
+  - `develop` (desenvolvimento)
+- Commits padronizados com prefixos como:
+  - `feat/` para novas funcionalidades;
+  - `fix/` para correções de bugs.
+nsistência e qualidade do código.
+- Todas as alterações passam por validação na branch `develop` antes de serem mescladas à branch `main`.
