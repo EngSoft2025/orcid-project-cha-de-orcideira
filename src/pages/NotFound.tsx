@@ -1,3 +1,5 @@
+// Componemte para a Página de Erro 404 (quando não acha uma página pertencente)
+
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
