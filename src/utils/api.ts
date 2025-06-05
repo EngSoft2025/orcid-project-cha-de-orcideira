@@ -84,11 +84,78 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
     if (!data.data || !Array.isArray(data.data)) {
       return [];
     }
-    
-    return data.data.map(transformAuthorData);
+
+    // Filtra apenas os autores que possuem ORCID
+    /*
+    const autoresComOrcid = data.data.filter(
+      (author: any) => author.externalIds?.ORCID
+    );*/
+
+    //return autoresComOrcid.map(transformAuthorData);
   } catch (error) {
     console.error('Erro ao buscar autores:', error);
     throw error;
+  }
+};
+
+// pesquisa autores por meio da api do orcid
+export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
+  try {
+    const response = await fetch(
+      `https://pub.orcid.org/v3.0/search/?q=${encodeURIComponent(query)}`,
+      { headers: { Accept: 'application/json' } }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Erro na busca ORCID: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const entries = data.result || [];
+
+    const authors = await Promise.all(
+      entries.slice(0, 10).map(async (entry: any) => {
+        const orcidId = entry?.['orcid-identifier']?.path;
+        if (!orcidId) return null;
+
+        try {
+          const profileRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/person`, {
+            headers: { Accept: 'application/json' },
+          });
+
+          if (!profileRes.ok) return null;
+
+          const profile = await profileRes.json();
+
+          const givenNames = profile.name?.['given-names']?.value || '';
+          const familyName = profile.name?.['family-name']?.value || '';
+          const fullName = `${givenNames} ${familyName}`.trim();
+
+          return {
+            id: orcidId,
+            orcidId,
+            name: fullName || orcidId,
+            affiliations: [], // ORCID 'person' não retorna emprego diretamente
+            hIndex: 0,
+            totalPublications: 0,
+            totalCitations: 0,
+            educationSummary: '',
+            educationDetails: [],
+            professionalExperiences: [],
+            personalPageUrl: `https://orcid.org/${orcidId}`,
+            publications: [],
+            biography: '',
+          } as Author;
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return authors.filter((a): a is Author => a !== null);
+  } catch (err) {
+    console.error('Erro na busca via ORCID:', err);
+    throw err;
   }
 };
 
