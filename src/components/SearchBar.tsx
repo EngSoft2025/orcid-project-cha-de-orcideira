@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { searchPapers, searchAuthors } from '../utils/api';
+import { searchPapers, searchAuthorsOrcid } from '../utils/api';
 import { toast } from "@/hooks/use-toast";
 
 const SearchBar: React.FC = () => {
@@ -48,7 +48,7 @@ const SearchBar: React.FC = () => {
       if (buscaTipo === 'papers') {
         results = await searchPapers(termoBusca);
       } else {
-        results = await searchAuthors(termoBusca);
+        results = await searchAuthorsOrcid(termoBusca);
       }
       
       console.log("Resultados obtidos:", results);

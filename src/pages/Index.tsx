@@ -24,7 +24,7 @@ const Index: React.FC = () => {
       
       <footer className="py-6 border-t border-gray-200 bg-white">
         <div className="container mx-auto text-center text-gray-500 text-sm">
-          <p>© 2024 Chá de Orcideira. Desenvolvido com dados do Semantic Scholar e ORCID.</p>
+          <p>© 2025 Chá de Orcideira. Desenvolvido com dados do ORCID e Scopus.</p>
         </div>
       </footer>
       

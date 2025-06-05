@@ -21,24 +21,6 @@ const transformPaperData = (paperData: any): Paper => {
   };
 };
 
-// Transforma os dados do autor vindo da API para o formato que usamos internamente
-const transformAuthorData = (authorData: any): Author => {
-  return {
-    id: authorData.authorId || authorData.id,
-    name: authorData.name || 'Nome não disponível',
-    orcidId: authorData.externalIds?.ORCID || '',
-    affiliations: Array.isArray(authorData.affiliations) ? authorData.affiliations : [],
-    hIndex: authorData.hIndex,
-    totalPublications: authorData.paperCount,
-    totalCitations: authorData.citationCount,
-    educationSummary: authorData.education || '',
-    educationDetails: authorData.educationHistory || authorData.educationalDetails || [],
-    professionalExperiences: authorData.workHistory || authorData.experiences || [],
-    personalPageUrl: authorData.homepage || '',
-    publications: Array.isArray(authorData.papers) ? authorData.papers.map(transformPaperData) : [],
-    biography: authorData.bio || authorData.biography || '',
-  };
-};
 
 // Função para buscar papers
 export const searchPapers = async (query: string): Promise<Paper[]> => {
@@ -84,13 +66,142 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
     if (!data.data || !Array.isArray(data.data)) {
       return [];
     }
-    
-    return data.data.map(transformAuthorData);
+
+    // Filtra apenas os autores que possuem ORCID
+    /*
+    const autoresComOrcid = data.data.filter(
+      (author: any) => author.externalIds?.ORCID
+    );*/
+
+    //return autoresComOrcid.map(transformAuthorData);
+    return data.data.map(transformPaperData);
   } catch (error) {
     console.error('Erro ao buscar autores:', error);
     throw error;
   }
 };
+
+// pesquisa autores por meio da api do orcid
+export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
+  const SCOPUS_API_KEY = 'e9f7150ee927a143a13aa8d6ebe97184'; // Substitua pela sua chave da Elsevier
+
+  try {
+    const response = await fetch(
+      `https://pub.orcid.org/v3.0/search/?q=${encodeURIComponent(query)}`,
+      { headers: { Accept: 'application/json' } }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Erro na busca ORCID: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const entries = data.result || [];
+
+    const authors = await Promise.all(
+      entries.slice(0, 10).map(async (entry: any) => {
+        const orcidId = entry?.['orcid-identifier']?.path;
+        if (!orcidId) return null;
+
+        try {
+          const profileRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/person`, {
+            headers: { Accept: 'application/json' },
+          });
+
+          if (!profileRes.ok) return null;
+
+          const profile = await profileRes.json();
+
+          const givenNames = profile.name?.['given-names']?.value || '';
+          const familyName = profile.name?.['family-name']?.value || '';
+          const fullName = `${givenNames} ${familyName}`.trim();
+          
+          const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/works`, {
+            headers: { Accept: 'application/json' }
+          });
+
+          if (!worksRes.ok) {
+            throw new Error(`Erro ao buscar trabalhos ORCID: ${worksRes.status} ${worksRes.statusText}`);
+          }
+
+          const worksData = await worksRes.json();
+          const publications = worksData.group?.map((groupItem: any) => {
+            const workSummary = groupItem['work-summary']?.[0];
+
+            // Pega o DOI, se existir, filtrando o array external-id
+            const externalIds = workSummary?.['external-ids']?.['external-id'] || [];
+            const doiEntry = externalIds.find((id: any) => id['external-id-type'] === 'doi');
+            const doi = doiEntry ? doiEntry['external-id-value'] : '';
+
+            return {
+              title: workSummary?.title?.title?.value || '',
+              year: workSummary?.publicationDate?.year?.value || '',
+              journal: workSummary?.journalTitle?.value || '',
+              externalId: doi,
+            };
+        }) || [];
+          // Valores padrão
+          let hIndex = 0;
+          let totalCitations = 0;
+          let totalPublications = publications.length;
+
+          try {
+            const scopusRes = await fetch(
+              `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json&view=ENHANCED`
+            );
+
+            if (scopusRes.ok) {
+              const scopusData = await scopusRes.json();
+
+              const entry = scopusData['author-retrieval-response']?.[0];
+              const coredata = entry?.coredata;
+
+              if (entry) {
+                hIndex = parseInt(
+                  entry['h-index'] ??
+                  entry['author-profile']?.['metrics']?.['h-index'] ??
+                  '0',
+                  10
+                );
+
+                totalCitations = parseInt(coredata?.['citation-count'] ?? '0', 10);
+                //totalPublications = parseInt(coredata?.['document-count'] ?? totalPublications.toString(), 10);
+              }
+            } else {
+              console.warn(`[WARN] Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
+            }
+          } catch (scopusErr) {
+            console.warn(`[WARN] Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
+          }
+
+          return {
+            id: orcidId,
+            orcidId,
+            name: fullName || orcidId,
+            affiliations: [],
+            hIndex,
+            totalPublications,
+            totalCitations,
+            educationSummary: '',
+            educationDetails: [],
+            professionalExperiences: [],
+            personalPageUrl: `https://orcid.org/${orcidId}`,
+            publications: [],
+            biography: '',
+          } as Author;
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return authors.filter((a): a is Author => a !== null);
+  } catch (err) {
+    console.error('Erro na busca via ORCID:', err);
+    throw err;
+  }
+};
+
 
 // Função para buscar detalhes de um paper específico
 export const getPaperDetails = async (paperId: string): Promise<Paper | null> => {
@@ -114,25 +225,114 @@ export const getPaperDetails = async (paperId: string): Promise<Paper | null> =>
 };
 
 // Função para buscar detalhes de um autor específico
-export const getAuthorDetails = async (authorId: string): Promise<Author | null> => {
+export const getAuthorDetails = async (orcidId: string): Promise<Author | null> => {
+  const SCOPUS_API_KEY = 'e9f7150ee927a143a13aa8d6ebe97184';
+
   try {
-    console.log(`Buscando detalhes do autor ID: ${authorId}`);
-    const response = await fetch(
-      `${API_BASE_URL}/author/${authorId}?fields=authorId,name,affiliations,homepage,papers.title,papers.year,papers.citationCount,papers.authors,papers.paperId,hIndex,paperCount,citationCount,externalIds`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar detalhes: ${response.status} ${response.statusText}`);
+
+    // 1. Busca dados do ORCID (perfil pessoal)
+    const personRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/person`, {
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!personRes.ok) {
+      throw new Error(`Erro ao buscar dados pessoais ORCID: ${personRes.status} ${personRes.statusText}`);
     }
-    
-    const data = await response.json();
-    console.log('Detalhes do autor obtidos:', data);
-    return transformAuthorData(data);
+
+    const personData = await personRes.json();
+    // 2. Busca trabalhos do ORCID
+    const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/works`, {
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!worksRes.ok) {
+      throw new Error(`Erro ao buscar trabalhos ORCID: ${worksRes.status} ${worksRes.statusText}`);
+    }
+
+    const worksData = await worksRes.json();
+
+    // Extrai nome
+    const givenNames = personData.name?.['given-names']?.value || '';
+    const familyName = personData.name?.['family-name']?.value || '';
+    const fullName = `${givenNames} ${familyName}`.trim();
+
+    // Monta lista simples de publicações ORCID
+    const publications = worksData.group?.map((groupItem: any) => {
+      const workSummary = groupItem['work-summary']?.[0];
+
+      // Pega o DOI, se existir, filtrando o array external-id
+      const externalIds = workSummary?.['external-ids']?.['external-id'] || [];
+      const doiEntry = externalIds.find((id: any) => id['external-id-type'] === 'doi');
+      const doi = doiEntry ? doiEntry['external-id-value'] : '';
+
+      return {
+        title: workSummary?.title?.title?.value || '',
+        year: workSummary?.publicationDate?.year?.value || '',
+        journal: workSummary?.journalTitle?.value || '',
+        externalId: doi,
+      };
+    }) || [];
+
+    // 3. Busca dados bibliométricos pela Scopus usando ORCID
+    let hIndex = 0;
+    let totalCitations = 0;
+    let totalPublications = publications.length;
+
+    try {
+      const scopusRes = await fetch(
+        `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json&view=ENHANCED`
+      );
+
+      if (scopusRes.ok) {
+        const scopusData = await scopusRes.json();
+
+        const entry = scopusData['author-retrieval-response']?.[0];
+        const coredata = entry?.coredata;
+
+        if (entry) {
+          hIndex = parseInt(
+            entry['h-index'] ??
+            entry['author-profile']?.['metrics']?.['h-index'] ??
+            '0',
+            10
+          );
+
+          totalCitations = parseInt(coredata?.['citation-count'] ?? '0', 10);
+          //totalPublications = parseInt(coredata?.['document-count'] ?? totalPublications.toString(), 10);
+        }
+      } else {
+        console.warn(`[WARN] Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
+      }
+    } catch (scopusErr) {
+      console.warn(`[WARN] Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
+    }
+
+
+    // Monta o objeto final Author
+    const author: Author = {
+      id: orcidId,
+      orcidId,
+      name: fullName || orcidId,
+      affiliations: [], // poderia adicionar futuramente pegando do ORCID (exemplo: employment)
+      hIndex,
+      totalPublications,
+      totalCitations,
+      educationSummary: '',
+      educationDetails: [],
+      professionalExperiences: [],
+      personalPageUrl: `https://orcid.org/${orcidId}`,
+      publications,
+      biography: '',
+    };
+
+    console.log('[DEBUG] Autor final:', author);
+    return author;
   } catch (error) {
-    console.error('Erro ao buscar detalhes do autor:', error);
-    throw error;
+    console.error('[ERROR] Erro ao buscar detalhes do autor:', error);
+    return null;
   }
 };
+
 
 // Interface para os dados de registro
 interface RegisterData {
