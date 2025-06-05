@@ -92,6 +92,7 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
     );*/
 
     //return autoresComOrcid.map(transformAuthorData);
+    return data.data.map(transformPaperData);
   } catch (error) {
     console.error('Erro ao buscar autores:', error);
     throw error;
@@ -100,6 +101,8 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
 
 // pesquisa autores por meio da api do orcid
 export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
+  const SCOPUS_API_KEY = 'f96e8755d0a2d3b7be294c08b33d9ab2'; // Substitua pela sua chave da Elsevier
+
   try {
     const response = await fetch(
       `https://pub.orcid.org/v3.0/search/?q=${encodeURIComponent(query)}`,
@@ -131,14 +134,41 @@ export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
           const familyName = profile.name?.['family-name']?.value || '';
           const fullName = `${givenNames} ${familyName}`.trim();
 
+          // Valores padrão
+          let hIndex = 0;
+          let totalCitations = 0;
+          let totalPublications = 0;
+
+          // Busca dados da Scopus
+          try {
+            const scopusRes = await fetch(
+              `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json`
+            );
+
+            if (scopusRes.ok) {
+              const scopusData = await scopusRes.json();
+              const entry = scopusData['author-retrieval-response']?.[0];
+
+              if (entry) {
+                hIndex = parseInt(entry['h-index'] || '0', 10);
+                totalCitations = parseInt(entry['citation-count'] || '0', 10);
+                totalPublications = parseInt(entry['document-count'] || '0', 10);
+              }
+            } else {
+              console.warn(`Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
+            }
+          } catch (scopusErr) {
+            console.warn(`Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
+          }
+
           return {
             id: orcidId,
             orcidId,
             name: fullName || orcidId,
-            affiliations: [], // ORCID 'person' não retorna emprego diretamente
-            hIndex: 0,
-            totalPublications: 0,
-            totalCitations: 0,
+            affiliations: [],
+            hIndex,
+            totalPublications,
+            totalCitations,
             educationSummary: '',
             educationDetails: [],
             professionalExperiences: [],
@@ -158,6 +188,8 @@ export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
     throw err;
   }
 };
+
+
 
 // Função para buscar detalhes de um paper específico
 export const getPaperDetails = async (paperId: string): Promise<Paper | null> => {
@@ -181,25 +213,101 @@ export const getPaperDetails = async (paperId: string): Promise<Paper | null> =>
 };
 
 // Função para buscar detalhes de um autor específico
-export const getAuthorDetails = async (authorId: string): Promise<Author | null> => {
+export const getAuthorDetails = async (orcidId: string): Promise<Author | null> => {
+  const SCOPUS_API_KEY = 'f96e8755d0a2d3b7be294c08b33d9ab2';
+
   try {
-    console.log(`Buscando detalhes do autor ID: ${authorId}`);
-    const response = await fetch(
-      `${API_BASE_URL}/author/${authorId}?fields=authorId,name,affiliations,homepage,papers.title,papers.year,papers.citationCount,papers.authors,papers.paperId,hIndex,paperCount,citationCount,externalIds`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar detalhes: ${response.status} ${response.statusText}`);
+
+    // 1. Busca dados do ORCID (perfil pessoal)
+    const personRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/person`, {
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!personRes.ok) {
+      throw new Error(`Erro ao buscar dados pessoais ORCID: ${personRes.status} ${personRes.statusText}`);
     }
-    
-    const data = await response.json();
-    console.log('Detalhes do autor obtidos:', data);
-    return transformAuthorData(data);
+
+    const personData = await personRes.json();
+    // 2. Busca trabalhos do ORCID
+    const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/works`, {
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!worksRes.ok) {
+      throw new Error(`Erro ao buscar trabalhos ORCID: ${worksRes.status} ${worksRes.statusText}`);
+    }
+
+    const worksData = await worksRes.json();
+
+    // Extrai nome
+    const givenNames = personData.name?.['given-names']?.value || '';
+    const familyName = personData.name?.['family-name']?.value || '';
+    const fullName = `${givenNames} ${familyName}`.trim();
+
+    // Monta lista simples de publicações ORCID
+    const publications = worksData.group?.map((groupItem: any) => {
+      const workSummary = groupItem['work-summary']?.[0];
+      return {
+        title: workSummary?.title?.title?.value || '',
+        year: workSummary?.publicationDate?.year?.value || '',
+        journal: workSummary?.journalTitle?.value || '',
+        externalId: workSummary?.externalIds?.['external-id']?.[0]?.value || '',
+      };
+    }) || [];
+
+    // 3. Busca dados bibliométricos pela Scopus usando ORCID
+    let hIndex = 0;
+    let totalCitations = 0;
+    let totalPublications = publications.length;
+
+    try {
+
+      const scopusRes = await fetch(
+        `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json`
+      );
+
+      if (scopusRes.ok) {
+        const scopusData = await scopusRes.json();
+        console.log('[DEBUG] Dados Scopus:', scopusData);
+
+        const entry = scopusData['author-retrieval-response']?.[0];
+        if (entry) {
+          hIndex = parseInt(entry['h-index'] || '0', 10);
+          totalCitations = parseInt(entry['citation-count'] || '0', 10);
+          totalPublications = parseInt(entry['document-count'] || totalPublications.toString(), 10);
+        }
+      } else {
+        console.warn(`[WARN] Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
+      }
+    } catch (scopusErr) {
+      console.warn(`[WARN] Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
+    }
+
+    // Monta o objeto final Author
+    const author: Author = {
+      id: orcidId,
+      orcidId,
+      name: fullName || orcidId,
+      affiliations: [], // poderia adicionar futuramente pegando do ORCID (exemplo: employment)
+      hIndex,
+      totalPublications,
+      totalCitations,
+      educationSummary: '',
+      educationDetails: [],
+      professionalExperiences: [],
+      personalPageUrl: `https://orcid.org/${orcidId}`,
+      publications,
+      biography: '',
+    };
+
+    console.log('[DEBUG] Autor final:', author);
+    return author;
   } catch (error) {
-    console.error('Erro ao buscar detalhes do autor:', error);
-    throw error;
+    console.error('[ERROR] Erro ao buscar detalhes do autor:', error);
+    return null;
   }
 };
+
 
 // Interface para os dados de registro
 interface RegisterData {
