@@ -21,24 +21,6 @@ const transformPaperData = (paperData: any): Paper => {
   };
 };
 
-// Transforma os dados do autor vindo da API para o formato que usamos internamente
-const transformAuthorData = (authorData: any): Author => {
-  return {
-    id: authorData.authorId || authorData.id,
-    name: authorData.name || 'Nome não disponível',
-    orcidId: authorData.externalIds?.ORCID || '',
-    affiliations: Array.isArray(authorData.affiliations) ? authorData.affiliations : [],
-    hIndex: authorData.hIndex,
-    totalPublications: authorData.paperCount,
-    totalCitations: authorData.citationCount,
-    educationSummary: authorData.education || '',
-    educationDetails: authorData.educationHistory || authorData.educationalDetails || [],
-    professionalExperiences: authorData.workHistory || authorData.experiences || [],
-    personalPageUrl: authorData.homepage || '',
-    publications: Array.isArray(authorData.papers) ? authorData.papers.map(transformPaperData) : [],
-    biography: authorData.bio || authorData.biography || '',
-  };
-};
 
 // Função para buscar papers
 export const searchPapers = async (query: string): Promise<Paper[]> => {
@@ -101,7 +83,7 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
 
 // pesquisa autores por meio da api do orcid
 export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
-  const SCOPUS_API_KEY = 'f96e8755d0a2d3b7be294c08b33d9ab2'; // Substitua pela sua chave da Elsevier
+  const SCOPUS_API_KEY = 'e9f7150ee927a143a13aa8d6ebe97184'; // Substitua pela sua chave da Elsevier
 
   try {
     const response = await fetch(
@@ -133,32 +115,63 @@ export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
           const givenNames = profile.name?.['given-names']?.value || '';
           const familyName = profile.name?.['family-name']?.value || '';
           const fullName = `${givenNames} ${familyName}`.trim();
+          
+          const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/works`, {
+            headers: { Accept: 'application/json' }
+          });
 
+          if (!worksRes.ok) {
+            throw new Error(`Erro ao buscar trabalhos ORCID: ${worksRes.status} ${worksRes.statusText}`);
+          }
+
+          const worksData = await worksRes.json();
+          const publications = worksData.group?.map((groupItem: any) => {
+            const workSummary = groupItem['work-summary']?.[0];
+
+            // Pega o DOI, se existir, filtrando o array external-id
+            const externalIds = workSummary?.['external-ids']?.['external-id'] || [];
+            const doiEntry = externalIds.find((id: any) => id['external-id-type'] === 'doi');
+            const doi = doiEntry ? doiEntry['external-id-value'] : '';
+
+            return {
+              title: workSummary?.title?.title?.value || '',
+              year: workSummary?.publicationDate?.year?.value || '',
+              journal: workSummary?.journalTitle?.value || '',
+              externalId: doi,
+            };
+        }) || [];
           // Valores padrão
           let hIndex = 0;
           let totalCitations = 0;
-          let totalPublications = 0;
+          let totalPublications = publications.length;
 
-          // Busca dados da Scopus
           try {
             const scopusRes = await fetch(
-              `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json`
+              `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json&view=ENHANCED`
             );
 
             if (scopusRes.ok) {
               const scopusData = await scopusRes.json();
+
               const entry = scopusData['author-retrieval-response']?.[0];
+              const coredata = entry?.coredata;
 
               if (entry) {
-                hIndex = parseInt(entry['h-index'] || '0', 10);
-                totalCitations = parseInt(entry['citation-count'] || '0', 10);
-                totalPublications = parseInt(entry['document-count'] || '0', 10);
+                hIndex = parseInt(
+                  entry['h-index'] ??
+                  entry['author-profile']?.['metrics']?.['h-index'] ??
+                  '0',
+                  10
+                );
+
+                totalCitations = parseInt(coredata?.['citation-count'] ?? '0', 10);
+                //totalPublications = parseInt(coredata?.['document-count'] ?? totalPublications.toString(), 10);
               }
             } else {
-              console.warn(`Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
+              console.warn(`[WARN] Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
             }
           } catch (scopusErr) {
-            console.warn(`Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
+            console.warn(`[WARN] Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
           }
 
           return {
@@ -190,7 +203,6 @@ export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
 };
 
 
-
 // Função para buscar detalhes de um paper específico
 export const getPaperDetails = async (paperId: string): Promise<Paper | null> => {
   try {
@@ -214,7 +226,7 @@ export const getPaperDetails = async (paperId: string): Promise<Paper | null> =>
 
 // Função para buscar detalhes de um autor específico
 export const getAuthorDetails = async (orcidId: string): Promise<Author | null> => {
-  const SCOPUS_API_KEY = 'f96e8755d0a2d3b7be294c08b33d9ab2';
+  const SCOPUS_API_KEY = 'e9f7150ee927a143a13aa8d6ebe97184';
 
   try {
 
@@ -247,11 +259,17 @@ export const getAuthorDetails = async (orcidId: string): Promise<Author | null> 
     // Monta lista simples de publicações ORCID
     const publications = worksData.group?.map((groupItem: any) => {
       const workSummary = groupItem['work-summary']?.[0];
+
+      // Pega o DOI, se existir, filtrando o array external-id
+      const externalIds = workSummary?.['external-ids']?.['external-id'] || [];
+      const doiEntry = externalIds.find((id: any) => id['external-id-type'] === 'doi');
+      const doi = doiEntry ? doiEntry['external-id-value'] : '';
+
       return {
         title: workSummary?.title?.title?.value || '',
         year: workSummary?.publicationDate?.year?.value || '',
         journal: workSummary?.journalTitle?.value || '',
-        externalId: workSummary?.externalIds?.['external-id']?.[0]?.value || '',
+        externalId: doi,
       };
     }) || [];
 
@@ -261,20 +279,26 @@ export const getAuthorDetails = async (orcidId: string): Promise<Author | null> 
     let totalPublications = publications.length;
 
     try {
-
       const scopusRes = await fetch(
-        `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json`
+        `https://api.elsevier.com/content/author/orcid/${orcidId}?apiKey=${SCOPUS_API_KEY}&httpAccept=application/json&view=ENHANCED`
       );
 
       if (scopusRes.ok) {
         const scopusData = await scopusRes.json();
-        console.log('[DEBUG] Dados Scopus:', scopusData);
 
         const entry = scopusData['author-retrieval-response']?.[0];
+        const coredata = entry?.coredata;
+
         if (entry) {
-          hIndex = parseInt(entry['h-index'] || '0', 10);
-          totalCitations = parseInt(entry['citation-count'] || '0', 10);
-          totalPublications = parseInt(entry['document-count'] || totalPublications.toString(), 10);
+          hIndex = parseInt(
+            entry['h-index'] ??
+            entry['author-profile']?.['metrics']?.['h-index'] ??
+            '0',
+            10
+          );
+
+          totalCitations = parseInt(coredata?.['citation-count'] ?? '0', 10);
+          //totalPublications = parseInt(coredata?.['document-count'] ?? totalPublications.toString(), 10);
         }
       } else {
         console.warn(`[WARN] Scopus API retornou status ${scopusRes.status} para ORCID ${orcidId}`);
@@ -282,6 +306,7 @@ export const getAuthorDetails = async (orcidId: string): Promise<Author | null> 
     } catch (scopusErr) {
       console.warn(`[WARN] Erro ao buscar dados Scopus para ${orcidId}:`, scopusErr);
     }
+
 
     // Monta o objeto final Author
     const author: Author = {

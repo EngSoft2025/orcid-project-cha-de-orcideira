@@ -347,28 +347,47 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
                     {author.publications.map((publication, index) => {
                       const publicationId = publication.paperId || `${author.id}-pub-${publication.title}`;
                       const isFavorited = isAuthenticated && isPaperFavorite(currentUser?.id || '', publicationId);
-                      
+                      console.log(publication)
                       return (
                         <li key={publicationId} className="text-sm border-l-2 border-primary-light pl-3 py-1">
                           <div className="flex justify-between items-start gap-3">
                             <div className="flex-1">
-                              <div className="font-medium text-gray-700">{publication.title}</div>
-                              <div className="text-gray-500">
-                                {typeof publication.authors === 'string' ? 
-                                  publication.authors : 
-                                  (Array.isArray(publication.authors) ? 
-                                    (typeof publication.authors[0] === 'string' ? 
-                                      publication.authors.join(', ') : 
-                                      publication.authors.map((a: any) => a.name).join(', ')) : 
-                                    '')}
-                                {publication.year && <span> ({publication.year})</span>}
+                              <div className="font-bold text-gray-800">{publication.title}</div>
+
+                              {publication.year && (
+                                <div className="text-gray-500 text-xs mt-0.5">{publication.year}</div>
+                              )}
+
+                              {publication.externalId && (
+                                <div className="text-primary text-xs mt-0.5">
+                                  <a
+                                    href={`https://doi.org/${publication.externalId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline"
+                                  >
+                                    {publication.externalId}
+                                  </a>
+                                </div>
+                              )}
+
+                              <div className="text-gray-500 mt-1">
+                                {typeof publication.authors === 'string'
+                                  ? publication.authors
+                                  : Array.isArray(publication.authors)
+                                  ? typeof publication.authors[0] === 'string'
+                                    ? publication.authors.join(', ')
+                                    : publication.authors.map((a: any) => a.name).join(', ')
+                                  : ''}
                               </div>
+
                               {publication.citationCount !== undefined && (
                                 <div className="text-xs text-gray-500 mt-1">
                                   Citações: {publication.citationCount}
                                 </div>
                               )}
                             </div>
+
                             <Button
                               size="sm"
                               variant={isFavorited ? "default" : "outline"}
