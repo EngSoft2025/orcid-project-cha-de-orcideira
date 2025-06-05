@@ -1,8 +1,6 @@
-// Estado global da aplicação relacionado à busca de Publicações e Autores
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Publicação
 export interface Paper {
   paperId: string;
   title: string;
@@ -15,7 +13,6 @@ export interface Paper {
   references?: Paper[];
 }
 
-// Autor
 export interface Author {
   id: string;
   name: string;
@@ -32,7 +29,14 @@ export interface Author {
   biography?: string;
 }
 
-// Define se a busca é por Publicação ou Autor
+export interface User {
+  id: string;
+  nome: string;
+  sobrenome: string;
+  email: string;
+  orcidId?: string;
+}
+
 export type SearchType = 'papers' | 'authors';
 
 interface SearchContextType {
@@ -49,7 +53,7 @@ interface SearchContextType {
   error: string | null;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   
-  // Propriedades Adicionais para a Interface em Português
+  // Additional properties for the Portuguese interface
   buscaTipo: SearchType;
   setBuscaTipo: React.Dispatch<React.SetStateAction<SearchType>>;
   termoBusca: string;
@@ -61,25 +65,31 @@ interface SearchContextType {
   erro: string | null;
   setErro: React.Dispatch<React.SetStateAction<string | null>>;
   
-  // Visualização Detalhada
+  // Detail view properties
   detalheSelecionado: Paper | Author | null;
   setDetalheSelecionado: React.Dispatch<React.SetStateAction<Paper | Author | null>>;
   detalheCarregado: boolean;
   setDetalheCarregado: React.Dispatch<React.SetStateAction<boolean>>;
   
-  // Controle das Propriedades Modais
+  // Modal control properties
   isDetailModalOpen: boolean;
   setDetailModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isLoginModalOpen: boolean;
   setLoginModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isRegisterModalOpen: boolean;
   setRegisterModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  
+  // User authentication
+  currentUser: User | null;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+  isAuthenticated: boolean;
+  logout: () => void;
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
 
 export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Interface em inglês
+  // English interface state
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [searchType, setSearchType] = useState<SearchType>('papers');
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -87,21 +97,42 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Interface em português
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [buscaTipo, setBuscaTipo] = useState<SearchType>('papers');
   const [resultados, setResultados] = useState<(Paper | Author)[]>([]);
   const [carregando, setCarregando] = useState<boolean>(false);
   const [erro, setErro] = useState<string | null>(null);
   
-  // Visualização Detalhada
   const [detalheSelecionado, setDetalheSelecionado] = useState<Paper | Author | null>(null);
   const [detalheCarregado, setDetalheCarregado] = useState<boolean>(false);
   
-  // Controle das Propriedades Modais
   const [isDetailModalOpen, setDetailModalOpen] = useState<boolean>(false);
   const [isLoginModalOpen, setLoginModalOpen] = useState<boolean>(false);
   const [isRegisterModalOpen, setRegisterModalOpen] = useState<boolean>(false);
+
+  // User authentication state
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Check for stored user on initialization
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Erro ao carregar usuário salvo:', error);
+        localStorage.removeItem('currentUser');
+      }
+    }
+  }, []);
+
+  const isAuthenticated = currentUser !== null;
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    console.log('Usuário deslogado');
+  };
 
   return (
     <SearchContext.Provider 
@@ -119,7 +150,6 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         error,
         setError,
         
-        // Interface em Português
         buscaTipo,
         setBuscaTipo,
         termoBusca,
@@ -131,19 +161,23 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         erro,
         setErro,
         
-        // Visualização Detalhada
         detalheSelecionado,
         setDetalheSelecionado,
         detalheCarregado,
         setDetalheCarregado,
         
-        // Controle Modal
         isDetailModalOpen,
         setDetailModalOpen,
         isLoginModalOpen,
         setLoginModalOpen,
         isRegisterModalOpen,
         setRegisterModalOpen,
+        
+        // User authentication
+        currentUser,
+        setCurrentUser,
+        isAuthenticated,
+        logout,
       }}
     >
       {children}

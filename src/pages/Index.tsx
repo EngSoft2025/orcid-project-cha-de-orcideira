@@ -1,4 +1,3 @@
-// Componemte da página Principal
 
 import React from 'react';
 import { SearchProvider } from '../context/SearchContext';

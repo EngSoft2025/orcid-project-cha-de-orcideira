@@ -1,4 +1,3 @@
-// Componemte que recebe as Publicações e exibe as informações sobre ele
 
 import React from 'react';
 import { Paper } from '../context/SearchContext';
@@ -6,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Objeto que recebe as Publicações
 interface PaperDetailProps {
   paper: Paper;
 }
@@ -15,7 +13,6 @@ const PaperDetail: React.FC<PaperDetailProps> = ({ paper }) => {
   return (
     <ScrollArea className="max-h-[80vh] overflow-auto pr-4">
       <CardHeader>
-        {/* Exibe o título e os autores, exibe o ano se tiver */}
         <CardTitle className="text-xl text-gray-800">{paper.title}</CardTitle>
         <CardDescription>
           {paper.authors.join(', ')}
@@ -24,7 +21,7 @@ const PaperDetail: React.FC<PaperDetailProps> = ({ paper }) => {
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Exibe o resumo de uma publicação */}
+        {/* Abstract */}
         {paper.abstract && (
           <div>
             <h3 className="font-semibold text-gray-700 mb-2">Resumo</h3>
@@ -32,7 +29,7 @@ const PaperDetail: React.FC<PaperDetailProps> = ({ paper }) => {
           </div>
         )}
         
-        {/* Exibe alguns metadados como DOI, número de citações e área de estudo */}
+        {/* Metadata */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {paper.doi && (
             <div>
@@ -65,7 +62,7 @@ const PaperDetail: React.FC<PaperDetailProps> = ({ paper }) => {
           )}
         </div>
         
-        {/* Exibe as referências */}
+        {/* References */}
         {paper.references && paper.references.length > 0 && (
           <div>
             <Separator className="my-4" />

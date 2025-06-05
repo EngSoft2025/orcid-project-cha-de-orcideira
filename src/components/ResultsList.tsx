@@ -1,4 +1,3 @@
-// Componemte responsável por mostrar a lista de resultados das Publicações ou Autores
 
 import React from 'react';
 import { useSearch } from '../context/SearchContext';
@@ -17,6 +16,8 @@ const ResultsList: React.FC = () => {
     erro,
     setDetalheSelecionado,
     setDetalheCarregado,
+    currentUser,
+    isAuthenticated
   } = useSearch();
   
   const navigate = useNavigate();
@@ -43,7 +44,6 @@ const ResultsList: React.FC = () => {
         console.log("Detalhes obtidos:", detailedItem);
         setDetalheSelecionado(detailedItem);
         
-        // Navegar na mesma janela em vez de abrir uma nova aba
         navigate(detailPath);
         
         toast({
@@ -54,7 +54,6 @@ const ResultsList: React.FC = () => {
         console.log("Nenhum detalhe encontrado, usando item original:", item);
         setDetalheSelecionado(item);
         
-        // Navegar mesmo com dados limitados
         navigate(detailPath);
         
         toast({
@@ -66,7 +65,6 @@ const ResultsList: React.FC = () => {
       setDetalheCarregado(true);
     } catch (error) {
       console.error("Erro ao buscar detalhes:", error);
-      // Fallback to original item if details fetch fails
       setDetalheSelecionado(item);
       setDetalheCarregado(true);
       
@@ -105,7 +103,6 @@ const ResultsList: React.FC = () => {
 
   console.log("Renderizando lista de resultados:", resultados);
 
-  // Renderiza a lista
   return (
     <div className="w-full max-w-3xl mx-auto">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -116,7 +113,7 @@ const ResultsList: React.FC = () => {
       
       <div className="space-y-4">
         {buscaTipo === 'papers' ? (
-          // Cartão das Publicações
+          // Paper results
           (resultados as Paper[]).map((paper) => (
             <Card key={paper.paperId} className="overflow-hidden hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
@@ -148,7 +145,7 @@ const ResultsList: React.FC = () => {
             </Card>
           ))
         ) : (
-          // Cartão dos Autores
+          // Author results
           (resultados as Author[]).map((author) => (
             <Card key={author.id} className="overflow-hidden hover:shadow-md transition-shadow">
               <CardContent className="pt-6">

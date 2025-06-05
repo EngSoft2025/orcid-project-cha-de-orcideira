@@ -1,9 +1,7 @@
-// Implementa um serviço de integração com a API do Semantic Scholar
-// Funções de Cadastro e Login
 
 import { Paper, Author } from '../context/SearchContext';
+import { registerUser, authenticateUser } from './userStorage';
 
-// A API permite até 100 solicitações a cada 5 minutos
 const API_BASE_URL = 'https://api.semanticscholar.org/graph/v1';
 
 // Transforma os dados do paper vindo da API para o formato que usamos internamente
@@ -94,7 +92,6 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
   }
 };
 
-// **** Contém possível erro ****
 // Função para buscar detalhes de um paper específico
 export const getPaperDetails = async (paperId: string): Promise<Paper | null> => {
   try {
@@ -146,38 +143,68 @@ interface RegisterData {
   senha: string;
 }
 
-// Função para registrar usuário (simulada pois não temos backend)
+// Função para registrar usuário usando localStorage
 export const register = async (userData: RegisterData): Promise<void> => {
   console.log('Registrando usuário:', userData);
   
-  // Simulando chamada de API
+  // Simulando um tempo de resposta para manter a UX consistente
   return new Promise((resolve, reject) => {
-    // Simulando um tempo de resposta
     setTimeout(() => {
-      if (userData.email && userData.senha && userData.nome && userData.sobrenome) {
+      try {
+        // Validação básica
+        if (!userData.email || !userData.senha || !userData.nome || !userData.sobrenome) {
+          reject(new Error('Dados de usuário incompletos'));
+          return;
+        }
+        
+        // Registrar usuário usando o sistema de armazenamento local
+        registerUser(userData);
+        
         console.log('Usuário registrado com sucesso');
         resolve();
-      } else {
-        reject(new Error('Dados de usuário incompletos'));
+      } catch (error) {
+        console.error('Erro no registro:', error);
+        reject(error);
       }
     }, 1000);
   });
 };
 
-// Função para login de usuário (simulada pois não temos backend)
-export const login = async (email: string, senha: string): Promise<{ token: string }> => {
+// Função para login de usuário usando localStorage
+export const login = async (email: string, senha: string): Promise<{ token: string; user: any }> => {
   console.log('Tentativa de login:', { email });
   
   // Simulando chamada de API
   return new Promise((resolve, reject) => {
-    // Simulando um tempo de resposta
     setTimeout(() => {
-      // Simulando credenciais válidas para demonstração
-      if (email === "joao.silva@email.com" && senha === "senha123") {
-        console.log('Login bem-sucedido');
-        resolve({ token: 'simulado-token' });
-      } else {
-        reject(new Error('Email ou senha incorretos'));
+      try {
+        // Validação básica
+        if (!email || !senha) {
+          reject(new Error('Email e senha são obrigatórios'));
+          return;
+        }
+        
+        // Autenticar usando o sistema de armazenamento local
+        const user = authenticateUser(email, senha);
+        
+        if (user) {
+          console.log('Login bem-sucedido');
+          resolve({ 
+            token: 'local-token-' + user.id,
+            user: {
+              id: user.id,
+              nome: user.nome,
+              sobrenome: user.sobrenome,
+              email: user.email,
+              orcidId: user.orcidId
+            }
+          });
+        } else {
+          reject(new Error('Email ou senha incorretos'));
+        }
+      } catch (error) {
+        console.error('Erro no login:', error);
+        reject(new Error('Erro interno do sistema'));
       }
     }, 1000);
   });

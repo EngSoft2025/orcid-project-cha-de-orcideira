@@ -1,4 +1,3 @@
-// Componemte da barra de busca
 
 import React from 'react';
 import { Search } from 'lucide-react';
@@ -53,7 +52,6 @@ const SearchBar: React.FC = () => {
       }
       
       console.log("Resultados obtidos:", results);
-      // Guarda os resultados obtidos
       setResultados(results);
       
       if (results.length === 0) {

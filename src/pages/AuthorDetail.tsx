@@ -1,4 +1,3 @@
-// Componemte responsável por exibir a página de detalhes de um Autor
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -41,9 +40,9 @@ const AuthorDetailPage: React.FC = () => {
     fetchAuthorDetails();
   }, [id]);
 
-  // Em vez de fechar a janela, ele volta pra página anterior
+  // Instead of closing the window, navigate back to the previous page
   const handleBack = () => {
-    navigate(-1); // Volta pra página anterior mantendo a página de pesquisa
+    navigate(-1); // This will go back to the previous page in history, keeping the search results
   };
 
   if (loading) {

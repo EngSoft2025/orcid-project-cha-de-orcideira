@@ -1,6 +1,4 @@
 
-// Componemte que abre uma janela com os gráficos contendo o número de publicações e citações do autor
-
 import React from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useSearch } from '../context/SearchContext';
@@ -10,14 +8,14 @@ import { Paper, Author } from '../context/SearchContext';
 
 const DetailModal: React.FC = () => {
   const {
-    buscaTipo, /*Define o que vai ser buscado (Publicações ou Autores) */
-    detalheSelecionado, /* Objeto com os dados detalhados do tipo selecionado */
-    detalheCarregado, /*Boleano que indica se os dados já foram carregados ou estão sendo buscados */
-    isDetailModalOpen, 
-    setDetailModalOpen, 
+    buscaTipo,
+    detalheSelecionado,
+    detalheCarregado,
+    isDetailModalOpen,
+    setDetailModalOpen,
   } = useSearch();
 
-  // Mostra a tela de carregamento enquanto os dads estão sendo carregados
+  // Show loading while fetching details
   if (!detalheCarregado || !detalheSelecionado) {
     return (
       <Dialog open={isDetailModalOpen} onOpenChange={setDetailModalOpen}>

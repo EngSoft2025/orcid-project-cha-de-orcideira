@@ -7,31 +7,30 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { LineChart, Line } from 'recharts';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Book, Briefcase, GraduationCap, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import { Book, Briefcase, GraduationCap, Link as LinkIcon, ExternalLink, UserPlus, UserMinus, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useSearch } from '../context/SearchContext';
+import { isFollowingAuthor, followAuthor, unfollowAuthor, isPaperFavorite, addFavoritePaper, removeFavoritePaper } from '../utils/userPreferences';
+import { toast } from "@/hooks/use-toast";
 
-// Objeto com os dados do autor
 interface AuthorDetailProps {
   author: Author;
 }
 
-// Função auxiliar para receber as publicações do autor
-// Retorna dois arrays: pubData e citationData formatados e ordenados por ano
+// Helper function to convert publications to yearly data for charts
 const generateYearlyData = (publications: any[] = []) => {
   const citationsByYear: Record<string, number> = {};
   const pubsByYear: Record<string, number> = {};
   
-  // Conta as publicações por ano
   publications.forEach(pub => {
     if (pub.year) {
       pubsByYear[pub.year] = (pubsByYear[pub.year] || 0) + 1;
       
-      // Adiciona contagem de citações ao ano
       const citations = pub.citationCount || 0;
       citationsByYear[pub.year] = (citationsByYear[pub.year] || 0) + citations;
     }
   });
   
-  // Converte para arrays para gráfico
   const pubData = Object.keys(pubsByYear).map(year => ({
     year,
     count: pubsByYear[year]
@@ -47,16 +46,105 @@ const generateYearlyData = (publications: any[] = []) => {
 
 const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
   const { pubData, citationData } = generateYearlyData(author.publications);
+  const { currentUser, isAuthenticated, setLoginModalOpen } = useSearch();
 
   const hasYearlyData = pubData.length > 0 || citationData.length > 0;
+
+  const handleFollowToggle = () => {
+    if (!isAuthenticated) {
+      setLoginModalOpen(true);
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para seguir autores",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const isCurrentlyFollowing = isFollowingAuthor(currentUser!.id, author.id);
+    
+    if (isCurrentlyFollowing) {
+      unfollowAuthor(currentUser!.id, author.id);
+      toast({
+        title: "Autor removido",
+        description: `Você não está mais seguindo ${author.name}`,
+      });
+    } else {
+      followAuthor(currentUser!.id, author.id, author.name);
+      toast({
+        title: "Autor seguido",
+        description: `Você agora está seguindo ${author.name}`,
+      });
+    }
+  };
+
+  const handleSavePublication = (publication: any) => {
+    if (!isAuthenticated) {
+      setLoginModalOpen(true);
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para salvar publicações",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const publicationId = publication.paperId || `${author.id}-pub-${publication.title}`;
+    const isFavorited = isPaperFavorite(currentUser!.id, publicationId);
+    
+    if (isFavorited) {
+      removeFavoritePaper(currentUser!.id, publicationId);
+      toast({
+        title: "Publicação removida",
+        description: "Publicação removida dos favoritos",
+      });
+    } else {
+      const authorsString = typeof publication.authors === 'string' ? 
+        publication.authors : 
+        (Array.isArray(publication.authors) ? 
+          (typeof publication.authors[0] === 'string' ? 
+            publication.authors.join(', ') : 
+            publication.authors.map((a: any) => a.name).join(', ')) : 
+          '');
+      
+      addFavoritePaper(currentUser!.id, publicationId, publication.title, authorsString, publication.year);
+      toast({
+        title: "Publicação salva",
+        description: "Publicação adicionada aos favoritos",
+      });
+    }
+  };
+
+  const isFollowing = isAuthenticated && isFollowingAuthor(currentUser?.id || '', author.id);
 
   return (
     <ScrollArea className="max-h-[80vh] overflow-auto pr-4">
       <CardHeader>
-        <CardTitle className="text-xl text-gray-800">{author.name}</CardTitle>
-        <CardDescription>
-          {author.affiliations.join(', ')}
-        </CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl text-gray-800">{author.name}</CardTitle>
+            <CardDescription>
+              {author.affiliations.join(', ')}
+            </CardDescription>
+          </div>
+          <Button
+            onClick={handleFollowToggle}
+            variant={isFollowing ? "outline" : "default"}
+            className="flex items-center gap-2"
+          >
+            {isFollowing ? (
+              <>
+                <UserMinus className="h-4 w-4" />
+                Deixar de seguir
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Seguir autor
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
       
       <CardContent className="space-y-6">
@@ -96,8 +184,7 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
             </div>
           )}
         </div>
-        
-        {/* Metrics */}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {author.hIndex !== undefined && (
             <div className="bg-primary-light p-3 rounded-lg shadow-sm">
@@ -121,7 +208,6 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
           )}
         </div>
 
-        {/* Affiliations in Accordion */}
         {author.affiliations && author.affiliations.length > 0 && (
           <div>
             <Separator className="my-4" />
@@ -144,7 +230,6 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
           </div>
         )}
 
-        {/* Biography or Summary if available */}
         {author.biography && (
           <div>
             <Separator className="my-4" />
@@ -155,7 +240,6 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
           </div>
         )}
 
-        {/* Charts for publication and citation data */}
         {hasYearlyData && (
           <div>
             <Separator className="my-4" />
@@ -197,7 +281,6 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
           </div>
         )}
         
-        {/* Education */}
         {author.educationDetails && author.educationDetails.length > 0 && (
           <div>
             <Separator className="my-4" />
@@ -223,7 +306,6 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
           </div>
         )}
         
-        {/* Professional Experience */}
         {author.professionalExperiences && author.professionalExperiences.length > 0 && (
           <div>
             <Separator className="my-4" />
@@ -249,7 +331,6 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
           </div>
         )}
         
-        {/* Publications */}
         {author.publications && author.publications.length > 0 && (
           <div>
             <Separator className="my-4" />
@@ -263,26 +344,48 @@ const AuthorDetail: React.FC<AuthorDetailProps> = ({ author }) => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ul className="space-y-3">
-                    {author.publications.map((publication, index) => (
-                      <li key={publication.paperId || index} className="text-sm border-l-2 border-primary-light pl-3 py-1">
-                        <div className="font-medium text-gray-700">{publication.title}</div>
-                        <div className="text-gray-500">
-                          {typeof publication.authors === 'string' ? 
-                            publication.authors : 
-                            (Array.isArray(publication.authors) ? 
-                              (typeof publication.authors[0] === 'string' ? 
-                                publication.authors.join(', ') : 
-                                publication.authors.map((a: any) => a.name).join(', ')) : 
-                              '')}
-                          {publication.year && <span> ({publication.year})</span>}
-                        </div>
-                        {publication.citationCount !== undefined && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Citações: {publication.citationCount}
+                    {author.publications.map((publication, index) => {
+                      const publicationId = publication.paperId || `${author.id}-pub-${publication.title}`;
+                      const isFavorited = isAuthenticated && isPaperFavorite(currentUser?.id || '', publicationId);
+                      
+                      return (
+                        <li key={publicationId} className="text-sm border-l-2 border-primary-light pl-3 py-1">
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-700">{publication.title}</div>
+                              <div className="text-gray-500">
+                                {typeof publication.authors === 'string' ? 
+                                  publication.authors : 
+                                  (Array.isArray(publication.authors) ? 
+                                    (typeof publication.authors[0] === 'string' ? 
+                                      publication.authors.join(', ') : 
+                                      publication.authors.map((a: any) => a.name).join(', ')) : 
+                                    '')}
+                                {publication.year && <span> ({publication.year})</span>}
+                              </div>
+                              {publication.citationCount !== undefined && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Citações: {publication.citationCount}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={isFavorited ? "default" : "outline"}
+                              onClick={() => handleSavePublication(publication)}
+                              className="flex items-center gap-1 flex-shrink-0"
+                            >
+                              {isFavorited ? (
+                                <BookmarkCheck className="h-3 w-3" />
+                              ) : (
+                                <Bookmark className="h-3 w-3" />
+                              )}
+                              {isFavorited ? "Salvo" : "Salvar"}
+                            </Button>
                           </div>
-                        )}
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </AccordionContent>
               </AccordionItem>

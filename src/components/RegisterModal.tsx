@@ -1,6 +1,5 @@
-// Componemte para cadastro do usuário
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,21 +16,43 @@ import { register } from '../utils/api';
 import { useToast } from "@/components/ui/use-toast";
 
 const RegisterModal: React.FC = () => {
-  const { isRegisterModalOpen, setRegisterModalOpen, setLoginModalOpen } = useSearch();
+  const { isRegisterModalOpen, setRegisterModalOpen, setLoginModalOpen, currentUser } = useSearch();
   const { toast } = useToast();
+  const previousUserRef = useRef(currentUser);
 
-  // Guarda os valores do formulário
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     nome: '',
     sobrenome: '',
     email: '',
     orcidId: '',
     senha: '',
     confirmacaoSenha: '',
-  });
-  
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset form when modal is closed
+  useEffect(() => {
+    if (!isRegisterModalOpen) {
+      setFormData(initialFormData);
+      setError(null);
+    }
+  }, [isRegisterModalOpen]);
+
+  // Reset form only when user actually changes (login/logout)
+  useEffect(() => {
+    const previousUser = previousUserRef.current;
+    
+    // Only reset if there was actually a user change (not just navigation)
+    if (previousUser?.id !== currentUser?.id) {
+      setFormData(initialFormData);
+      setError(null);
+    }
+    
+    previousUserRef.current = currentUser;
+  }, [currentUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -41,7 +62,7 @@ const RegisterModal: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validação de senhas
+    // Validation
     if (formData.senha !== formData.confirmacaoSenha) {
       setError('As senhas não coincidem');
       return;
@@ -50,7 +71,6 @@ const RegisterModal: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    // Função que envia os dados para registrar na base (em desenvolvimento)
     try {
       await register({
         nome: formData.nome,
