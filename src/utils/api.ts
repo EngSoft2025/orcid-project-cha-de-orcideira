@@ -83,7 +83,7 @@ export const searchAuthors = async (query: string): Promise<Author[]> => {
 
 // pesquisa autores por meio da api do orcid
 export const searchAuthorsOrcid = async (query: string): Promise<Author[]> => {
-  const SCOPUS_API_KEY = 'e9f7150ee927a143a13aa8d6ebe97184'; // Substitua pela sua chave da Elsevier
+  const SCOPUS_API_KEY = '8d2da25cf3e4c607ac0f38d438700e4b'; // Substitua pela sua chave da Elsevier
 
   try {
     const response = await fetch(
@@ -226,7 +226,7 @@ export const getPaperDetails = async (paperId: string): Promise<Paper | null> =>
 
 // Função para buscar detalhes de um autor específico
 export const getAuthorDetails = async (orcidId: string): Promise<Author | null> => {
-  const SCOPUS_API_KEY = 'e9f7150ee927a143a13aa8d6ebe97184';
+  const SCOPUS_API_KEY = '8d2da25cf3e4c607ac0f38d438700e4b';
 
   try {
 
