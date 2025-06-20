@@ -19,11 +19,10 @@
     - Artigos publicados por ano;
     - Citações recebidas;
     - Indicadores de impacto.
-  - Recomendações de *Hot Papers* (artigos em alta na área de interesse).
-  - Sugestões de periódicos adequados para submissão de trabalhos.
-  - Notificações automáticas quando os trabalhos forem citados.
+  - Recomendações de *Hot Papers* (artigos em alta na área de interesse);
+  - Sugestões de periódicos adequados para submissão de trabalhos;
+  - Favoritar artigos e seguir pesquisadores.
 
-  O cadastro e login são realizados via **ORCID**, garantindo autenticidade e segurança.
 - **Para o público geral:**
 
   - Ferramenta de busca para obter informações sobre pesquisadores e áreas de estudo;
@@ -39,16 +38,12 @@ A plataforma realiza integrações automáticas com serviços como **Scopus** pa
 - **Backend:**
 
   - Node.js para implementação da lógica de negócios e desenvolvimento de APIs.
-- **Banco de Dados:**
 
-  - PostgreSQL (banco relacional) para armazenamento de dados estruturados.
-- **Autenticação:**
-
-  - OAuth 2.0 via ORCID para autenticação e validação de identidade.
 - **Integrações:**
 
-  - API do **Scopus**: coleta de estatísticas sobre artigos e citações.
-  - API do **ORCID**: autenticação e sincronização de dados do usuário.
+  - API do **Scopus**: coleta de estatísticas sobre artigos e citações;
+  - API do **ORCID**: autenticação e sincronização de dados do usuário;
+  - API do **Researchgate**: acesso a informações sobre publicações e algumas métricas.
 
 ## Controle de Versionamento
 
@@ -62,3 +57,7 @@ O versionamento do projeto seguirá o modelo **Git Flow**, com as seguintes prá
   - `fix/` para correções de bugs.
     nsistência e qualidade do código.
 - Todas as alterações passam por validação na branch `develop` antes de serem mescladas à branch `main`.
+
+## Documentação e Organização
+
+A documentação referente ao projeto, como Fluxograma de Entregas e diagrama de Casos de Uso, podem ser consultadas na pasta [documents](https://github.com/EngSoft2025/orcid-project-cha-de-orcideira/tree/main/src), nessa também pode-se observar um arquivo html que corresponde a página do [Notion](https://www.notion.com) que o grupo utilizou para organização e divisão das tarefas.
